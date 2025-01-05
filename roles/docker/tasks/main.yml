@@ -1,0 +1,58 @@
+---
+- name: Update and upgrade apt packages
+  apt:
+    update_cache: yes
+    upgrade: dist
+
+- name: Install prerequisite packages for Docker
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+    state: present
+
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Install Docker and Docker Compose plugin
+  apt:
+    name:
+      - docker-ce
+      - docker-compose-plugin
+    state: present
+
+- name: Add user to the Docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: true
+
+- name: Start Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+  become: true
+
+- name: Verify Docker Compose installation
+  command: docker compose version
+  register: docker_compose_version
+  changed_when: false
+
+- name: Print Docker Compose version
+  debug:
+    msg: "Docker Compose version installed: {{ docker_compose_version.stdout }}"

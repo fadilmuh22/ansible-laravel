@@ -1,0 +1,34 @@
+services:
+  minio:
+    image: quay.io/minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - minio-network
+    volumes:
+      - ./storage:/data
+    environment:
+      - MINIO_ROOT_USER=itso-data
+      - MINIO_ROOT_PASSWORD=password
+    command: server /data --console-address ":9001"
+
+  createbuckets:
+    image: minio/mc
+    volumes:
+      - ./storage-itso:/data
+    depends_on:
+      - minio
+    networks:
+      - minio-network
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      /usr/bin/mc alias set myminio http://minio:9000 itso-data password;
+      /usr/bin/mc mb myminio/itso-bucket;
+      /usr/bin/mc anonymous set public myminio/itso-bucket;
+      /usr/bin/mc cp -r /data/* myminio/itso-bucket/;
+      exit 0;
+      "
+networks:
+  minio-network:

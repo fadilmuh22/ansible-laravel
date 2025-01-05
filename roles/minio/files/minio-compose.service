@@ -1,0 +1,16 @@
+[Unit]
+Description=MinIO Docker Compose Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+WorkingDirectory=/opt/minio
+ExecStart=/bin/bash -c "docker compose -f /opt/minio/docker-compose.yml up -d"
+ExecStop=/bin/bash -c "docker compose -f /opt/minio/docker-compose.yml stop"
+Restart=always
+User={{ ansible_user }}
+Group={{ ansible_user }}
+
+[Install]
+WantedBy=multi-user.target
+

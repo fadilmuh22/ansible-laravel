@@ -1,0 +1,67 @@
+---
+- name: Verify Docker Compose is installed
+  command: docker compose --version
+  register: docker_compose_check
+  failed_when: docker_compose_check.rc != 0
+  changed_when: false
+
+- name: Abort if Docker Compose is not installed
+  fail:
+    msg: "Docker Compose is not installed. Please ensure the Docker role installs Docker Compose."
+  when: docker_compose_check.failed
+
+- name: Create directory for MinIO setup
+  file:
+    path: /opt/minio
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Copy docker-compose.yml for MinIO
+  copy:
+    src: docker-compose.yml
+    dest: /opt/minio/docker-compose.yml
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Ensure storage directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+  loop:
+    - /opt/minio/storage
+    - /opt/minio/storage-itso
+
+- name: Open ports 9000 and 9001 for MinIO
+  ufw:
+    rule: allow
+    name: "MinIO Ports"
+    port: "{{ item }}"
+    proto: tcp
+  with_items:
+    - 9000
+    - 9001
+  become: true
+
+- name: Copy systemd service file for MinIO
+  become: true
+  copy:
+    src: minio-compose.service
+    dest: /etc/systemd/system/minio-compose.service
+    mode: '0644'
+
+- name: Reload systemd to apply new service
+  become: true
+  command: systemctl daemon-reload
+
+- name: Enable and start MinIO service
+  become: true
+  systemd:
+    name: minio
+    state: started
+    enabled: true
